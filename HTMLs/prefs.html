@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Preferences — Bushaltestelle</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    :root{
+      --lcd-bg:#000000;
+      --lcd-text:#FF8C00;
+      --bg:#F0F0F0;
+      --card:#FFFFFF;
+      --accent:#FFEB3B;
+      --muted:#4CAF50;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      background:var(--bg);
+      color:#333;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      padding:20px;
+      gap:20px;
+      position:relative;
+    }
+
+    h1,h2{
+      font-size:clamp(18px,3vw,24px);
+      color:var(--muted);
+      margin:0 0 6px 0;
+      text-align:center;
+    }
+
+    /* Zurück-Knopf */
+    .back-button {
+      position:absolute;
+      top:20px;
+      left:20px;
+      width:50px;
+      height:50px;
+      border-radius:50%;
+      border:3px solid #4CAF50;
+      background-color:#FFEB3B;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      padding:0;
+    }
+
+    .card{
+      width:100%;
+      max-width:540px;
+      background:var(--card);
+      border-radius:14px;
+      padding:20px;
+      box-shadow:0 4px 20px rgba(0,0,0,0.2);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    label{font-size:13px;color:var(--muted);display:block}
+    .field{display:flex;flex-direction:column;gap:6px;position:relative;}
+
+    input[type="text"], input[type="password"]{
+      padding:12px 40px 12px 14px;
+      font-size:16px;
+      border-radius:8px;
+      border:1px solid #CCCCCC;
+      background:#F9F9F9;
+      color:#333;
+      outline:none;
+      box-sizing:border-box;
+      font-family:monospace;
+    }
+
+    .controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+    .controls button{
+      appearance:none;border:0;padding:12px 18px;border-radius:10px;font-size:16px;cursor:pointer;background:var(--accent);color:#000;font-weight:600;min-width:120px;
+    }
+
+    .note{font-size:13px;color:#666;margin-top:6px}
+
+    /* Toggle Switch */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 28px;
+      margin-right: 12px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      border-radius: 28px;
+      transition: 0.4s;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.4s;
+    }
+
+    input:checked + .slider {
+      background-color: var(--muted);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+
+    .toggle-row {
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      gap:12px;
+      margin-top:6px;
+    }
+
+    @media (max-width:420px){
+      .card{padding:16px}
+      input[type="text"]{font-size:14px;padding:10px}
+      .controls button{min-width:100px}
+    }
+  </style>
+</head>
+<body>
+
+  <button class="back-button" onclick="window.location.href='/'" aria-label="Zurück">
+    <svg viewBox="0 0 24 24" width="24" height="24">
+      <line x1="5" y1="5" x2="19" y2="19" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+      <line x1="19" y1="5" x2="5" y2="19" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <h2>WLAN-Einstellungen</h2>
+  <main class="card">
+    <form id="wifiForm" method="POST" action="/preferences/apply" autocomplete="off">
+      <div class="field">
+        <label for="ssid">WLAN-SSID</label>
+        <input id="ssid" name="ssid" type="text" placeholder="Netzwerkname" required maxlength="32" />
+      </div>
+
+      <div class="field">
+        <label for="pwd">WLAN-Passwort</label>
+        <input id="pwd" name="password" type="password" placeholder="Passwort (optional)" maxlength="64" />
+        <button type="button" id="togglePwd" style="
+          position:absolute; 
+          right:10px; 
+          top:50%; 
+          transform:translateY(-50%);
+          background:transparent;
+          border:none;
+          cursor:pointer;
+          padding:0;
+        " aria-label="Passwort anzeigen/verbergen">
+          <svg id="eyeIcon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="controls">
+        <button type="button" onclick="window.location.href='/'">Abbrechen</button>
+        <button type="submit">Anwenden</button>
+      </div>
+
+      <div class="note">Hinweis: Änderungen werden beim Klicken auf "Anwenden" an den Server gesendet.</div>
+    </form>
+  </main>
+
+  <h2>API-Einstellungen</h2>
+  <main class="card">
+    <form id="apiForm" method="POST" action="/preferences/api" autocomplete="off">
+      <div class="toggle-row">
+        <label for="apiToggle">API aktivieren</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="apiToggle" name="apiEnabled">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="controls">
+        <button type="submit">Speichern</button>
+      </div>
+    </form>
+  </main>
+
+  <a href="https://github.com/EmilZander/Bushaltestelle-ESP8266">
+    <div class="note">GitHub-Repo</div>
+  </a>
+
+  <script>
+    const ssid = document.getElementById('ssid');
+    const pwd = document.getElementById('pwd');
+    const togglePwdBtn = document.getElementById('togglePwd');
+    const eyeIcon = document.getElementById('eyeIcon');
+    const wifiForm = document.getElementById('wifiForm');
+
+    function sanitizeInput(s){
+      const repl = { 'ä':'a','ö':'o','ü':'u','Ä':'A','Ö':'O','Ü':'U','ß':'ss' };
+      return s.replace(/[\n\r]/g,'').replace(/[äöüÄÖÜß]/g, m=>repl[m]||'');
+    }
+
+    ssid.addEventListener('input', ()=>{ ssid.value = sanitizeInput(ssid.value); });
+    pwd.addEventListener('input', ()=>{ pwd.value = pwd.value.replace(/[\n\r]/g,''); });
+
+    wifiForm.addEventListener('submit', ()=>{
+      ssid.value = encodeURIComponent(sanitizeInput(ssid.value));
+      pwd.value = encodeURIComponent(pwd.value);
+    });
+
+    togglePwdBtn.addEventListener('click', ()=>{
+      if(pwd.type === 'password'){
+        pwd.type = 'text';
+        eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><line x1="1" y1="1" x2="23" y2="23"/>';
+      } else {
+        pwd.type = 'password';
+        eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bushaltestelle</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bitcount+Grid+Single&display=swap');
+
+    :root {
+      --lcd-bg: #000000;
+      --lcd-text: #FF8C00;
+      --bg: #F0F0F0;
+      --card: #FFFFFF;
+      --accent: #FFEB3B;
+      --muted: #4CAF50;
+    }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: var(--bg);
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 540px;
+      background: var(--card);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      position: relative;
+    }
+
+    h1 {
+      margin: 0 0 14px 0;
+      font-size: clamp(20px,3.4vw,28px);
+      text-align: center;
+      color: var(--muted);
+    }
+
+    form { display: grid; gap: 12px; }
+
+    label {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .input-group {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      flex-grow: 1;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 44px 12px 14px;
+      font-size: 18px;
+      border-radius: 8px;
+      border: 1px solid #CCCCCC;
+      background: #F9F9F9;
+      color: #333;
+      outline: none;
+      box-sizing: border-box;
+      font-family: monospace;
+      letter-spacing: 1px;
+    }
+
+    /* SVG-X im Eingabefeld */
+    .x-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+
+    .x-btn:hover, .x-btn:active {
+      background: rgba(0,0,0,0.1);
+    }
+
+    .x-btn svg {
+      width: 14px;
+      height: 14px;
+      stroke: #888;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .clear-field-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      color: #000;
+      text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 6px;
+    }
+
+    .controls button {
+      appearance: none;
+      border: 0;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      background: var(--accent);
+      color: #000;
+      font-weight: 600;
+      min-width: 140px;
+    }
+
+    /* Vorschau */
+    .preview {
+      background: var(--lcd-bg);
+      border-radius: 6px;
+      padding: 6px 16px; /* minimaler Rand */
+      font-family: 'Bitcount Grid Single', monospace;
+      color: var(--lcd-text);
+      box-shadow: inset 0 0 10px #222;
+      white-space: nowrap;
+      width: calc(16ch + 32px); /* 16 Zeichen + Padding */
+      height: calc(2 * 1.5em + 12px); /* 2 Zeilen + Padding */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start; /* Text linksbündig */
+      margin: 0 auto; /* Box zentriert in Karte */
+      overflow: hidden;
+      font-size: 36px;
+    }
+
+    .row {
+      width: 100%;
+      line-height: 1.5em; /* kompakter Zeilenabstand */
+      letter-spacing: 2px;
+      overflow: hidden;
+    }
+
+    .settings-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      background: #FFEB3B;
+      border: 3px solid #4CAF50;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+
+    @media (max-width:420px){
+      .card{padding:16px}
+      input[type="text"]{font-size:16px;padding:10px 40px 10px 10px}
+      .controls button{min-width:120px}
+      .settings-btn{width:40px;height:40px;font-size:20px}
+      .preview { font-size:28px; height: calc(2 * 1.3em + 12px); }
+      .row { line-height:1.3em; }
+    }
+  </style>
+</head>
+<body>
+  <button class="settings-btn" onclick="window.location.href='/preferences'">E</button>
+
+  <main class="card" role="main">
+    <h1>Bushaltestelle</h1>
+
+    <form id="busForm" method="GET" action="/set" autocomplete="off">
+      <div>
+        <label for="row1">Zeile 1 <span class="hint" id="count1">0/16</span></label>
+        <div class="input-group">
+          <div class="input-wrapper">
+            <input id="row1" name="Row1" type="text" maxlength="16" inputmode="text" aria-label="Zeile 1" />
+            <button type="button" class="x-btn" aria-label="Feld leeren" onclick="clearField(1)">
+              <svg viewBox="0 0 24 24" fill="none">
+                <line x1="5" y1="5" x2="19" y2="19" />
+                <line x1="19" y1="5" x2="5" y2="19" />
+              </svg>
+            </button>
+          </div>
+          <a href="/clear?row=1" class="clear-field-btn">Löschen</a>
+        </div>
+      </div>
+
+      <div>
+        <label for="row2">Zeile 2 <span class="hint" id="count2">0/16</span></label>
+        <div class="input-group">
+          <div class="input-wrapper">
+            <input id="row2" name="Row2" type="text" maxlength="16" inputmode="text" aria-label="Zeile 2" />
+            <button type="button" class="x-btn" aria-label="Feld leeren" onclick="clearField(2)">
+              <svg viewBox="0 0 24 24" fill="none">
+                <line x1="5" y1="5" x2="19" y2="19" />
+                <line x1="19" y1="5" x2="5" y2="19" />
+              </svg>
+            </button>
+          </div>
+          <a href="/clear?row=2" class="clear-field-btn">Löschen</a>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button type="submit">Senden</button>
+        <button type="button" onclick="window.location.href='/clear'">Löschen</button>
+      </div>
+
+      <div class="preview" aria-hidden="true">
+        <div id="pv1" class="row">&nbsp;</div>
+        <div id="pv2" class="row">&nbsp;</div>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    const row1 = document.getElementById('row1');
+    const row2 = document.getElementById('row2');
+    const count1 = document.getElementById('count1');
+    const count2 = document.getElementById('count2');
+    const pv1 = document.getElementById('pv1');
+    const pv2 = document.getElementById('pv2');
+    const form = document.getElementById('busForm');
+
+    function sanitizeText(text){
+      const replacements = { 'ä':'a','ö':'o','ü':'u','Ä':'A','Ö':'O','Ü':'U','ß':'ss' };
+      let clean = text.replace(/[\n\r]/g, '');
+      clean = clean.replace(/[äöüÄÖÜß]/g, m => replacements[m] || '');
+      return clean;
+    }
+
+    function updatePreview(inputEl, previewEl, countEl){
+      inputEl.value = sanitizeText(inputEl.value);
+      if(inputEl.value.length > 16) inputEl.value = inputEl.value.slice(0,16);
+      countEl.textContent = `${inputEl.value.length}/16`;
+      previewEl.textContent = inputEl.value || '\u00A0';
+    }
+
+    function clearField(n){
+      const field = document.getElementById('row' + n);
+      const preview = document.getElementById('pv' + n);
+      const count = document.getElementById('count' + n);
+      field.value = '';
+      updatePreview(field, preview, count);
+      field.focus();
+    }
+
+    row1.addEventListener('input', ()=> updatePreview(row1,pv1,count1));
+    row2.addEventListener('input', ()=> updatePreview(row2,pv2,count2));
+
+    updatePreview(row1,pv1,count1);
+    updatePreview(row2,pv2,count2);
+
+    form.addEventListener('submit', ()=>{
+      row1.value = encodeURIComponent(sanitizeText(row1.value.slice(0,16)));
+      row2.value = encodeURIComponent(sanitizeText(row2.value.slice(0,16)));
+    });
+  </script>
+</body>
+</html>
