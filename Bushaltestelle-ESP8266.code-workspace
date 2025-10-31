@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "Bushaltestelle",
+			"path": "Bushaltestelle"
+		},
+		{
+			"name": "Button",
+			"path": "../../../../PlatformIO/Projects/Button"
+		}
+	],
+	"settings": {}
+}
