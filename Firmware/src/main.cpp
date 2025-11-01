@@ -713,6 +713,119 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // The LCD-display
 ESP8266WebServer server(80); // The webserver to be hosted
 #pragma endregion
 
+static const uint16_t WIFI_MAGIC = 0xA5A5;
+static const int EEPROM_SIZE_BYTES = 512;
+static const int EEPROM_ADDR = 0;
+
+// EEPROM-backed storage for WiFi credentials
+struct WifiCreds {
+  uint16_t magic;
+  uint8_t apiEnabled; // 0 = disabled, 1 = enabled
+  char ssid[33];      // 32 chars + null
+  char password[65];  // 64 chars + null
+};
+
+struct APIclient
+{
+  int id;
+  char name[33];      // 32 chars + null
+  char apiKey[17];  // 16 chars + null
+};
+
+class APIclientList
+{
+  private:
+    static const int MAX_CLIENTS = 16;
+    APIclient clients[MAX_CLIENTS];
+    int clientCount = 0;
+  public:
+    const APIclient EMPTY_CLIENT = {-1, "none", "-1"};
+
+    const APIclient* clients_get()
+    {
+      return clients;
+    }
+
+    const int clientCount_get()
+    {
+      return clientCount;
+    }
+
+    APIclient clients_getByID(int id)
+    {
+      if (id == -1)
+      {
+        return EMPTY_CLIENT;
+      }
+
+      for (int i = 0; i < clientCount; i++)
+      {
+        if (clients[i].id == id)
+        {
+          return clients[i];
+        }
+      }
+      return EMPTY_CLIENT;
+    }
+
+    bool clients_add(const APIclient& client)
+    {
+      if (clientCount >= MAX_CLIENTS)
+      {
+        return false; // List full
+      }
+
+      clients[clientCount] = client;
+      clientCount++;
+      return true;
+    }
+    
+    bool clients_add(const char* name, const char* apiKey)
+    {
+      APIclient client;
+      client.id = clientCount;
+      strncpy(client.name, name, sizeof(client.name)-1);
+      strncpy(client.apiKey, apiKey, sizeof(client.apiKey)-1);
+      return clients_add(client);
+    }
+
+    void clients_clear()
+    {
+      clientCount = 0;
+      memset(clients, 0, sizeof(clients));
+    }
+
+    void clients_removeByID(int id)
+    {
+      for (int i = 0; i < clientCount; i++)
+      {
+        if (clients[i].id == id)
+        {
+          // Shift remaining clients down
+          for (int j = i; j < clientCount - 1; j++)
+          {
+            clients[j] = clients[j + 1];
+          }
+          clientCount--;
+          break;
+        }
+      }
+    }
+
+    void clients_setByID(int id, const char* name, const char* apiKey)
+    {
+      for (int i = 0; i < clientCount; i++)
+      {
+        if (clients[i].id == id)
+        {
+          strncpy(clients[i].name, name, sizeof(clients[i].name)-1);
+          strncpy(clients[i].apiKey, apiKey, sizeof(clients[i].apiKey)-1);
+          break;
+        }
+      }
+    }
+  };
+
 // WiFi login data
 String ssid;
 String password;
@@ -801,18 +914,6 @@ void clearDisplay(int row = -1)
   }
   displayText();
 }
-
-// EEPROM-backed storage for WiFi credentials
-struct WifiCreds {
-  uint16_t magic;
-  uint8_t apiEnabled; // 0 = disabled, 1 = enabled
-  char ssid[33];      // 32 chars + null
-  char password[65];  // 64 chars + null
-};
-
-static const uint16_t WIFI_MAGIC = 0xA5A5;
-static const int EEPROM_SIZE_BYTES = 512;
-static const int EEPROM_ADDR = 0;
 
 void fetchPrefs()
 {
