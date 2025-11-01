@@ -714,13 +714,14 @@ ESP8266WebServer server(80); // The webserver to be hosted
 #pragma endregion
 
 static const uint16_t WIFI_MAGIC = 0xA5A5;
-static const int EEPROM_SIZE_BYTES = 512;
-static const int EEPROM_ADDR = 0;
+static const uint16_t API_MAGIC = 0xB5B5;
+static const int EEPROM_SIZE_BYTES = 2048;  // Vergrößert für API-Clients
+static const int EEPROM_WIFI_ADDR = 0;
+static const int EEPROM_API_ADDR = 256;     // API-Clients Start nach WiFi-Daten
 
 // EEPROM-backed storage for WiFi credentials
 struct WifiCreds {
   uint16_t magic;
-  uint8_t apiEnabled; // 0 = disabled, 1 = enabled
   char ssid[33];      // 32 chars + null
   char password[65];  // 64 chars + null
 };
@@ -730,28 +731,38 @@ struct APIclient
   int id;
   char name[33];      // 32 chars + null
   char apiKey[17];  // 16 chars + null
+  bool enabled;      // 0 = disabled, 1 = enabled
 };
+
+const APIclient EMPTY_CLIENT = { -1, "", "", false };
 
 class APIclientList
 {
   private:
     static const int MAX_CLIENTS = 16;
-    APIclient clients[MAX_CLIENTS];
-    int clientCount = 0;
+    static APIclient clients[MAX_CLIENTS];
+    static int clientCount;
   public:
-    const APIclient EMPTY_CLIENT = {-1, "none", "-1"};
-
-    const APIclient* clients_get()
+    static const APIclient* clients_get()
     {
       return clients;
     }
 
-    const int clientCount_get()
+    static int clientCount_get()
     {
+      for (int i = 0; i < MAX_CLIENTS; i++)
+      {
+        if (clients[i].id == -1)
+        {
+          clientCount = i;
+          break;
+        }
+      }
+
       return clientCount;
     }
 
-    APIclient clients_getByID(int id)
+    static APIclient clients_getByID(int id)
     {
       if (id == -1)
       {
@@ -768,7 +779,7 @@ class APIclientList
       return EMPTY_CLIENT;
     }
 
-    bool clients_add(const APIclient& client)
+    static bool clients_add(const APIclient& client)
     {
       if (clientCount >= MAX_CLIENTS)
       {
@@ -780,7 +791,7 @@ class APIclientList
       return true;
     }
     
-    bool clients_add(const char* name, const char* apiKey)
+    static bool clients_add(const char* name, const char* apiKey)
     {
       APIclient client;
       client.id = clientCount;
@@ -789,13 +800,13 @@ class APIclientList
       return clients_add(client);
     }
 
-    void clients_clear()
+    static void clients_clear()
     {
       clientCount = 0;
       memset(clients, 0, sizeof(clients));
     }
 
-    void clients_removeByID(int id)
+    static void clients_removeByID(int id)
     {
       for (int i = 0; i < clientCount; i++)
       {
@@ -812,7 +823,7 @@ class APIclientList
       }
     }
 
-    void clients_setByID(int id, const char* name, const char* apiKey)
+    static void clients_setByID(int id, const char* name, const char* apiKey)
     {
       for (int i = 0; i < clientCount; i++)
       {
@@ -824,7 +835,66 @@ class APIclientList
         }
       }
     }
-  };
+
+    // Speichert die API-Clients im EEPROM
+    bool saveToEEPROM() {
+      struct APIClientHeader {
+        uint16_t magic;
+        uint8_t count;
+      } header;
+
+      header.magic = API_MAGIC;
+      header.count = clientCount;
+
+      EEPROM.begin(EEPROM_SIZE_BYTES);
+      
+      // Header schreiben
+      EEPROM.put(EEPROM_API_ADDR, header);
+      
+      // Clients schreiben
+      int offset = EEPROM_API_ADDR + sizeof(header);
+      for (int i = 0; i < clientCount; i++) {
+        EEPROM.put(offset, clients[i]);
+        offset += sizeof(APIclient);
+      }
+
+      bool success = EEPROM.commit();
+      EEPROM.end();
+      return success;
+    }
+
+    // Lädt die API-Clients aus dem EEPROM
+    bool fetchFromEEPROM() {
+      struct APIClientHeader {
+        uint16_t magic;
+        uint8_t count;
+      } header;
+
+      EEPROM.begin(EEPROM_SIZE_BYTES);
+      
+      // Header lesen
+      EEPROM.get(EEPROM_API_ADDR, header);
+
+      // Prüfen ob valide Daten
+      if (header.magic != API_MAGIC || header.count > MAX_CLIENTS) {
+        // Keine oder ungültige Daten -> Liste leeren
+        clients_clear();
+        EEPROM.end();
+        return false;
+      }
+
+      // Clients lesen
+      clientCount = header.count;
+      int offset = EEPROM_API_ADDR + sizeof(header);
+      for (int i = 0; i < clientCount; i++) {
+        EEPROM.get(offset, clients[i]);
+        offset += sizeof(APIclient);
+      }
+
+      EEPROM.end();
+      return true;
+    }
+};
 
 // WiFi login data
 String ssid;
@@ -920,7 +990,7 @@ void fetchPrefs()
   EEPROM.begin(EEPROM_SIZE_BYTES);
   WifiCreds creds;
   // Read raw struct from EEPROM
-  EEPROM.get(EEPROM_ADDR, creds);
+  EEPROM.get(EEPROM_WIFI_ADDR, creds);
 
   if (creds.magic == WIFI_MAGIC) {
     // Valid data present
@@ -928,8 +998,6 @@ void fetchPrefs()
     creds.password[sizeof(creds.password)-1] = '\0';
     ssid = String(creds.ssid);
     password = String(creds.password);
-    // Load persisted API flag
-    apiActivated = (creds.apiEnabled != 0);
   } else {
     // No valid data -> use empty strings
     ssid = "";
@@ -937,8 +1005,7 @@ void fetchPrefs()
     // Initialize EEPROM with an empty, valid record to avoid repeated reads
     memset(&creds, 0, sizeof(creds));
     creds.magic = WIFI_MAGIC;
-    creds.apiEnabled = 0;
-    EEPROM.put(EEPROM_ADDR, creds);
+    EEPROM.put(EEPROM_WIFI_ADDR, creds);
     EEPROM.commit();
   }
 
@@ -951,12 +1018,11 @@ void putPrefs()
   WifiCreds creds;
   memset(&creds, 0, sizeof(creds));
   creds.magic = WIFI_MAGIC;
-  creds.apiEnabled = apiActivated ? 1 : 0;
   // Copy strings with boundary checks
   strncpy(creds.ssid, ssid.c_str(), sizeof(creds.ssid)-1);
   strncpy(creds.password, password.c_str(), sizeof(creds.password)-1);
 
-  EEPROM.put(EEPROM_ADDR, creds);
+  EEPROM.put(EEPROM_WIFI_ADDR, creds);
   EEPROM.commit();
   EEPROM.end();
 }
@@ -998,6 +1064,12 @@ void showLoadingScreen(int statusCode, const String& message) {
   server.send(statusCode, "text/html", html);
 }
 
+void showPrefs()
+{
+  String html = String(html_prefs);
+  server.send(200, "text/html", html);
+}
+
 // The logic for the root path ("/")
 void handleRoot() {
   server.send(200, "text/html", html_main);
@@ -1022,13 +1094,57 @@ void handleClear()
 // The logic for the clear path ("/api/clear[?row=-1|1|2]")
 void handleApiClear()
 {
+  if (!server.hasArg("id")) return;
+  if (!server.hasArg("apiKey")) return;
+
+  const APIclient client = APIclientList::clients_getByID(server.arg("id").toInt());
+
+  if (client.id == -1)
+  {
+    // The json response
+    StaticJsonDocument<200> response;
+    response["status"] = "failed";
+    response["message"] = "invalid client id";
+    String jsonString;
+    serializeJson(response, jsonString);
+
+    server.send(200, "application/json", jsonString);
+    return;
+  }
+
+  if ((String)client.apiKey != server.arg("apiKey"))
+  {
+    // The json response
+    StaticJsonDocument<200> response;
+    response["status"] = "failed";
+    response["message"] = "invalid api key";
+    String jsonString;
+    serializeJson(response, jsonString);
+
+    server.send(200, "application/json", jsonString);
+    return;
+  }
+
+  if (!client.enabled)
+  {
+    // The json response
+    StaticJsonDocument<200> response;
+    response["status"] = "failed";
+    response["message"] = "client disabled";
+    String jsonString;
+    serializeJson(response, jsonString);
+
+    server.send(200, "application/json", jsonString);
+    return;
+  }
+
   int row = -1;
   if (server.hasArg("row")) row = server.arg("row").toInt();
   clearDisplay(row);
 
   // The json response
   StaticJsonDocument<200> response;
-  response["status"] = "succes";
+  response["status"] = "success";
   response["message"] = "";
   String jsonString;
   serializeJson(response, jsonString);
@@ -1039,12 +1155,43 @@ void handleApiClear()
 // The logic for the api-set-request ("/api/set?row1=[...]&row2=[...]")
 void handleAPISet()
 {
-  if (!apiActivated)
+  if (!server.hasArg("id")) return;
+  if (!server.hasArg("apiKey")) return;
+  
+  APIclient client = APIclientList::clients_getByID(server.arg("id").toInt());
+
+  if (client.id == -1)
   {
     // The json response
     StaticJsonDocument<200> response;
     response["status"] = "failed";
-    response["message"] = "api not activated";
+    response["message"] = "invalid client id";
+    String jsonString;
+    serializeJson(response, jsonString);
+
+    server.send(200, "application/json", jsonString);
+    return;
+  }
+
+  if ((String)client.apiKey != server.arg("apiKey"))
+  {
+    // The json response
+    StaticJsonDocument<200> response;
+    response["status"] = "failed";
+    response["message"] = "invalid api key";
+    String jsonString;
+    serializeJson(response, jsonString);
+
+    server.send(200, "application/json", jsonString);
+    return;
+  }
+
+  if (!client.enabled)
+  {
+    // The json response
+    StaticJsonDocument<200> response;
+    response["status"] = "failed";
+    response["message"] = "client disabled";
     String jsonString;
     serializeJson(response, jsonString);
 
@@ -1064,7 +1211,7 @@ void handleAPISet()
 
   // The json response
   StaticJsonDocument<200> response;
-  response["status"] = "succes";
+  response["status"] = "success";
   response["message"] = "";
   String jsonString;
   serializeJson(response, jsonString);
@@ -1074,6 +1221,51 @@ void handleAPISet()
 
 // The logic for the api-get path ("api/get")
 void handleAPIget() {
+  if (!server.hasArg("id")) return;
+  if (!server.hasArg("apiKey")) return;
+
+  APIclient client = APIclientList::clients_getByID(server.arg("id").toInt());
+
+  if (client.id == -1)
+  {
+    // The json response
+    StaticJsonDocument<200> response;
+    response["status"] = "failed";
+    response["message"] = "invalid client id";
+    String jsonString;
+    serializeJson(response, jsonString);
+
+    server.send(200, "application/json", jsonString);
+    return;
+  }
+
+  if ((String)client.apiKey != server.arg("apiKey"))
+  {
+    // The json response
+    StaticJsonDocument<200> response;
+    response["status"] = "failed";
+    response["message"] = "invalid api key";
+    String jsonString;
+    serializeJson(response, jsonString);
+
+    server.send(200, "application/json", jsonString);
+    return;
+  }
+
+  if (!client.enabled)
+  {
+    // The json response
+    StaticJsonDocument<200> response;
+    response["status"] = "failed";
+    response["message"] = "client disabled";
+    String jsonString;
+    serializeJson(response, jsonString);
+
+    server.send(200, "application/json", jsonString);
+    return;
+  }
+
+
   StaticJsonDocument<200> response;
   response["row1"] = line1Text;
   response["row2"] = line2Text;
