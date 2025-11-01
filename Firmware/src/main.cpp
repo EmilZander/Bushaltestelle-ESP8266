@@ -343,6 +343,7 @@ const char* html_prefs = R"rawliteral(
       --accent:#FFEB3B;
       --muted:#4CAF50;
     }
+
     html,body{height:100%;}
     body{
       margin:0;
@@ -365,7 +366,6 @@ const char* html_prefs = R"rawliteral(
       text-align:center;
     }
 
-    /* Zurück-Knopf */
     .back-button {
       position:absolute;
       top:20px;
@@ -392,6 +392,7 @@ const char* html_prefs = R"rawliteral(
       display:flex;
       flex-direction:column;
       gap:12px;
+      position:relative;
     }
 
     label{font-size:13px;color:var(--muted);display:block}
@@ -422,15 +423,12 @@ const char* html_prefs = R"rawliteral(
       display: inline-block;
       width: 50px;
       height: 28px;
-      margin-right: 12px;
     }
-
     .toggle-switch input {
       opacity: 0;
       width: 0;
       height: 0;
     }
-
     .slider {
       position: absolute;
       cursor: pointer;
@@ -442,7 +440,6 @@ const char* html_prefs = R"rawliteral(
       border-radius: 28px;
       transition: 0.4s;
     }
-
     .slider:before {
       position: absolute;
       content: "";
@@ -454,28 +451,62 @@ const char* html_prefs = R"rawliteral(
       border-radius: 50%;
       transition: 0.4s;
     }
-
     input:checked + .slider {
       background-color: var(--muted);
     }
-
     input:checked + .slider:before {
       transform: translateX(22px);
     }
 
-    .toggle-row {
+    /* API Client Cards */
+    .api-client-card {
       display:flex;
       align-items:center;
-      justify-content:flex-start;
-      gap:12px;
-      margin-top:6px;
+      justify-content:space-between;
+      background:#fff;
+      border:1px solid #ddd;
+      border-radius:10px;
+      padding:12px 16px;
+      box-shadow:0 2px 8px rgba(0,0,0,0.1);
     }
 
-    @media (max-width:420px){
-      .card{padding:16px}
-      input[type="text"]{font-size:14px;padding:10px}
-      .controls button{min-width:100px}
+    .api-client-name {
+      font-weight:600;
+      color:#333;
     }
+
+    .api-client-actions {
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    /* Info & Add Buttons */
+    .info-btn, .add-btn {
+      width:40px;
+      height:40px;
+      border-radius:50%;
+      border:3px solid var(--muted);
+      background-color:var(--accent);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      font-weight:bold;
+      color:var(--muted);
+      font-family:'Press Start 2P', cursive;
+      font-size:18px;
+      line-height:0;
+    }
+
+    .add-btn {
+      position:absolute;
+      bottom:16px;
+      right:16px;
+      box-shadow:0 4px 10px rgba(0,0,0,0.3);
+      z-index:5;
+    }
+
   </style>
 </head>
 <body>
@@ -525,19 +556,10 @@ const char* html_prefs = R"rawliteral(
   </main>
 
   <h2>API-Einstellungen</h2>
-  <main class="card">
-    <form id="apiForm" method="POST" action="/preferences/api" autocomplete="off">
-      <div class="toggle-row">
-        <label for="apiToggle">API aktivieren</label>
-        <label class="toggle-switch">
-          <input type="checkbox" id="apiToggle" name="apiEnabled">
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="controls">
-        <button type="submit">Speichern</button>
-      </div>
-    </form>
+  <main class="card" id="apiList">
+    %API_LIST%
+    <!-- Floating Add Button -->
+    <button class="add-btn" title="Neuen Client hinzufügen">+</button>
   </main>
 
   <a href="https://github.com/EmilZander/Bushaltestelle-ESP8266">
@@ -545,6 +567,7 @@ const char* html_prefs = R"rawliteral(
   </a>
 
   <script>
+    // WLAN handling
     const ssid = document.getElementById('ssid');
     const pwd = document.getElementById('pwd');
     const togglePwdBtn = document.getElementById('togglePwd');
@@ -573,6 +596,16 @@ const char* html_prefs = R"rawliteral(
         eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
       }
     });
+
+    // Info button logic -> redirect
+    document.querySelectorAll('.info-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const card = e.target.closest('.api-client-card');
+        const id = card.dataset.id;
+        window.location.href = `/preferences/api?id=${encodeURIComponent(id)}`;
+      });
+    });
+
   </script>
 
 </body>
@@ -1064,12 +1097,6 @@ void showLoadingScreen(int statusCode, const String& message) {
   server.send(statusCode, "text/html", html);
 }
 
-void showPrefs()
-{
-  String html = String(html_prefs);
-  server.send(200, "text/html", html);
-}
-
 // The logic for the root path ("/")
 void handleRoot() {
   server.send(200, "text/html", html_main);
@@ -1077,7 +1104,26 @@ void handleRoot() {
 
 // The logic for the preferences path ("/preferences")
 void handlePreferences() {
-  server.send(200, "text/html", html_prefs);
+
+  String html = String(html_prefs);
+
+  String apiList;
+  for (int i = 0; i < APIclientList::clientCount_get(); i++)
+  {
+    APIclient client = APIclientList::clients_get()[i];
+    
+    apiList += String("<div class='api-client-card' data-id='") + client.id + "'>";
+    apiList += "<div class='api-client-name'>" + (String) client.name + "</div>";
+    apiList += "<div class='api-client-actions'>";
+    apiList += "<label class='toggle-switch'><input type='checkbox'";
+    if (client.enabled) apiList += " checked";
+    apiList += "><span class='slider'></span></label>";
+    apiList += "<button class='info-btn'>i</button>";
+    apiList += "</div></div>";
+  }
+  html.replace("%API_LIST%", apiList);
+
+  server.send(200, "text/html", html);
 }
 
 // The logic for the clear path ("/clear[?row=-1|1|2]")
