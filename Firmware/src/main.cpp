@@ -741,130 +741,251 @@ const char* html_prefs = R"rawliteral(
 )rawliteral";
 #pragma endregion
 
-#pragma region Loader
-const char* html_loader = R"rawliteral(
+#pragma region Preferences API
+const char* html_prefs_api = R"rawliteral(
 <!doctype html>
 <html lang="de">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ladebildschirm — Bushaltestelle</title>
+  <title>API-Client Detail — Bushaltestelle</title>
+  <!-- Material Icons Web-Font -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <style>
     :root{
-      --sky:#87CEEB;
-      --road:#555;
-      --bus:#FFD600;
-      --highlight:#4CAF50;
+      --bg:#F0F0F0;
+      --card:#FFFFFF;
+      --accent:#FFEB3B;
+      --muted:#4CAF50;
+      --danger:#FF5252;
     }
 
-    html,body{height:100%;margin:0;background:var(--sky);font-family:system-ui,Segoe UI,Roboto,Arial;overflow:hidden;}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      background:var(--bg);
+      color:#333;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:20px;
+      gap:20px;
+      min-height:100vh;
+    }
 
-    .loader-screen{position:fixed;inset:0;background:var(--sky);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;overflow:hidden;}
+    h1,h2{
+      font-size:clamp(18px,3vw,24px);
+      color:var(--muted);
+      margin:0;
+      text-align:left;
+    }
 
-    .clouds{position:absolute;top:10%;left:0;width:400%;display:flex;gap:60px;animation:moveSky 80s linear infinite;z-index:2;}
-    .cloud{width:120px;height:70px;background:#fff;border-radius:50%;position:relative;filter:drop-shadow(2px 2px 3px rgba(0,0,0,0.2));}
-    .cloud::before,.cloud::after{content:'';position:absolute;background:#fff;border-radius:50%;}
-    .cloud::before{width:70px;height:70px;top:-25px;left:20px;}
-    .cloud::after{width:90px;height:90px;top:-35px;left:50px;}
+    .name-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      width:100%;
+      max-width:540px;
+    }
 
-    .trees{position:absolute;bottom:120px;left:0;width:400%;display:flex;gap:50px;animation:moveSky 30s linear infinite;z-index:2;}
-    .tree svg{height:150px;}
+    .card{
+      width:100%;
+      max-width:540px;
+      background:var(--card);
+      border-radius:14px;
+      padding:20px;
+      box-shadow:0 4px 20px rgba(0,0,0,0.2);
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      position:relative;
+    }
 
-    .road{position:absolute;bottom:0;left:0;width:200%;height:120px;background:var(--road);z-index:1;}
-    .lane{position:absolute;bottom:60px;left:0;width:200%;height:6px;background:repeating-linear-gradient(to right, #fff 0 50px, transparent 50px 100px);animation:drive 8s linear infinite;border-radius:3px;}
+    label{
+      font-size:13px;
+      color:var(--muted);
+      display:block;
+      margin-bottom:4px;
+    }
 
-    .bus{position:absolute;bottom:110px;left:50%;transform:translateX(-50%);width:180px;height:80px;background:var(--bus);border-radius:15px 15px 8px 8px;box-shadow:0 6px 12px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between;padding:0 12px;animation:busFloat 2s ease-in-out infinite alternate;z-index:3;}
-    .window{width:38px;height:30px;background:#4CAF50;border-radius:5px;margin-top:10px;box-shadow:inset 0 2px 3px rgba(0,0,0,0.2);}
-    .door{width:28px;height:50px;background:#4CAF50;border-radius:4px;margin-right:6px;box-shadow:inset 0 2px 3px rgba(0,0,0,0.2);}
-    .wheel{width:24px;height:24px;background:#111;border-radius:50%;position:absolute;bottom:-12px;box-shadow:0 2px 3px rgba(0,0,0,0.5);}
-    .wheel.left{left:30px;}
-    .wheel.right{right:30px;}
+    .value-field{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background:#F9F9F9;
+      border:1px solid #ccc;
+      border-radius:8px;
+      padding:10px 14px;
+      font-family:monospace;
+      font-size:16px;
+    }
 
-    .dot-container{position:absolute;top:25%;width:100%;display:flex;justify-content:center;gap:6px;}
-    .dot{width:12px;height:12px;background:var(--highlight);border-radius:50%;animation:dotBlink 1.2s infinite ease-in-out;}
-    .dot:nth-child(2){animation-delay:0.2s;}
-    .dot:nth-child(3){animation-delay:0.4s;}
+    button{
+      cursor:pointer;
+      border:none;
+      border-radius:8px;
+      padding:6px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-width:auto;
+      background:#FFEB3B;
+      color:var(--muted);
+      font-family: 'Material Icons';
+      font-size:20px;
+    }
 
-    .message-box{
-      position:absolute;
-      bottom:240px;
-      background:rgba(255,255,255,0.8);
-      color:#111;
+    .controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:center;
+      margin-top:10px;
+    }
+
+    .btn-delete{
+      background:var(--danger);
+      color:#fff;
+      font-family:initial;
+      font-size:16px;
       padding:12px 18px;
       border-radius:10px;
-      box-shadow:0 2px 6px rgba(0,0,0,0.3);
-      font-size:1.1rem;
-      text-align:center;
-      max-width:80%;
     }
 
-    @keyframes drive{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
-    @keyframes moveSky{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
-    @keyframes dotBlink{0%,80%,100%{opacity:0.3;}40%{opacity:1;}}
-    @keyframes busFloat{0%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(-5px);}100%{transform:translateX(-50%) translateY(0);}}
+    .btn-back{
+      background:#fff;
+      border:2px solid var(--muted);
+      color:var(--muted);
+      font-family:initial;
+      font-size:16px;
+      padding:12px 18px;
+      border-radius:10px;
+    }
 
-    @media (prefers-reduced-motion: reduce){.lane,.clouds,.trees,.dot,.bus{animation:none}}
+    /* Modal */
+    .modal {
+      position:fixed;
+      top:0; left:0;
+      width:100%; height:100%;
+      background:rgba(0,0,0,0.4);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      visibility:hidden;
+      opacity:0;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      z-index:1000;
+    }
+
+    .modal.active{
+      visibility:visible;
+      opacity:1;
+    }
+
+    .modal-content{
+      background:#fff;
+      border-radius:12px;
+      padding:20px;
+      max-width:400px;
+      width:90%;
+      text-align:center;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      box-shadow:0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .modal-content p{
+      margin:0;
+      font-size:16px;
+      color:#333;
+    }
+
+    .modal-content .modal-actions{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
   </style>
 </head>
 <body>
-  <div class="loader-screen">
-    <div class="clouds">
-      <div class="cloud"></div><div class="cloud"></div><div class="cloud"></div>
-      <div class="cloud"></div><div class="cloud"></div><div class="cloud"></div>
+
+  <!-- Name + Rename -->
+  <div class="name-row">
+    <h1 id="clientName">%Name%</h1>
+    <button title="Umbenennen" onclick="renameClient()">edit</button>
   </div>
 
-    <div class="trees">
-      <div class="tree">
-        <svg viewBox="0 0 64 128" xmlns="http://www.w3.org/2000/svg">
-          <rect x="28" y="80" width="8" height="48" fill="#8B4513"/>
-          <circle cx="32" cy="64" r="32" fill="green"/>
-        </svg>
-      </div>
-      <div class="tree">
-        <svg viewBox="0 0 64 128" xmlns="http://www.w3.org/2000/svg">
-          <rect x="28" y="80" width="8" height="48" fill="#8B4513"/>
-          <circle cx="32" cy="64" r="32" fill="green"/>
-        </svg>
-    </div>
-      <div class="tree">
-        <svg viewBox="0 0 64 128" xmlns="http://www.w3.org/2000/svg">
-          <rect x="28" y="80" width="8" height="48" fill="#8B4513"/>
-          <circle cx="32" cy="64" r="32" fill="green"/>
-        </svg>
-      </div>
-      <div class="tree">
-        <svg viewBox="0 0 64 128" xmlns="http://www.w3.org/2000/svg">
-          <rect x="28" y="80" width="8" height="48" fill="#8B4513"/>
-          <circle cx="32" cy="64" r="32" fill="green"/>
-        </svg>
+  <main class="card">
+    <div>
+      <label>ID</label>
+      <div class="value-field">
+        <span id="clientId">%ID%</span>
+        <button title="Kopieren" onclick="copyToClipboard('clientId')">content_copy</button>
       </div>
     </div>
 
-    <div class="road"><div class="lane"></div></div>
-
-    <div class="bus">
-      <div class="window"></div>
-      <div class="window"></div>
-      <div class="door"></div>
-      <div class="wheel left"></div>
-      <div class="wheel right"></div>
+    <div>
+      <label>API-Key</label>
+      <div class="value-field">
+        <span id="clientKey">%Key%</span>
+        <button title="Neu Zuweisen" onclick="confirmAction('reassign')">autorenew</button>
+        <button title="Kopieren" onclick="copyToClipboard('clientKey')">content_copy</button>
+      </div>
     </div>
 
-    <div class="dot-container">
-      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-      </div>
+    <div class="controls">
+      <button class="btn-delete" onclick="confirmAction('delete')">Löschen</button>
+      <button class="btn-back" onclick="window.location.href='/preferences'">Zurück</button>
+    </div>
+  </main>
 
-    <div class="message-box">%MESSAGE%</div>
+  <!-- Modal -->
+  <div class="modal" id="confirmModal">
+    <div class="modal-content">
+      <p id="modalText">Bist du dir sicher?</p>
+      <div class="modal-actions">
+        <button onclick="proceedAction()">Ja</button>
+        <button onclick="closeModal()">Abbrechen</button>
+      </div>
+    </div>
   </div>
 
   <script>
-    window.showBusLoader = ()=> document.querySelector('.loader-screen').style.display='flex';
-    window.hideBusLoader = ()=> document.querySelector('.loader-screen').style.display='none';
+    function copyToClipboard(id){
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text).then(()=>alert('Kopiert!'));
+    }
+
+    let actionType = '';
+    function confirmAction(type){
+      actionType = type;
+      const modal = document.getElementById('confirmModal');
+      if(type==='delete') document.getElementById('modalText').textContent = 'Bist du dir sicher, dass du löschen willst?';
+      if(type==='reassign') document.getElementById('modalText').textContent = 'Bist du dir sicher, dass du den API-Key neu zuweisen willst?';
+      modal.classList.add('active');
+    }
+
+    function closeModal(){
+      document.getElementById('confirmModal').classList.remove('active');
+      actionType = '';
+    }
+
+    function proceedAction(){
+      const id = encodeURIComponent(document.getElementById('clientId').textContent);
+      if(actionType==='delete') window.location.href = `/preferences/api/delete?id=${id}`;
+      if(actionType==='reassign') window.location.href = `/preferences/api/reassignCode?id=${id}`;
+    }
+
+    function renameClient(){
+      const name = prompt('Neuer Name für den Client:', document.getElementById('clientName').textContent);
+      if(name) window.location.href = `/preferences/api/rename?id=${encodeURIComponent(document.getElementById('clientId').textContent)}&name=${encodeURIComponent(name)}`;
+    }
   </script>
 </body>
 </html>
 )rawliteral";
-
 #pragma endregion
 
 #pragma endregion
