@@ -1468,7 +1468,7 @@ void handleAPIget() {
   if (client.id == -1)
   {
     // The json response
-    StaticJsonDocument<200> response;
+    JsonDocument response;
     response["status"] = "failed";
     response["message"] = "invalid client id";
     String jsonString;
@@ -1481,7 +1481,7 @@ void handleAPIget() {
   if ((String)client.apiKey != server.arg("apiKey"))
   {
     // The json response
-    StaticJsonDocument<200> response;
+    JsonDocument response;
     response["status"] = "failed";
     response["message"] = "invalid api key";
     String jsonString;
@@ -1494,7 +1494,7 @@ void handleAPIget() {
   if (!client.enabled)
   {
     // The json response
-    StaticJsonDocument<200> response;
+    JsonDocument response;
     response["status"] = "failed";
     response["message"] = "client disabled";
     String jsonString;
@@ -1538,7 +1538,7 @@ void handleAPIset()
   if ((String)client.apiKey != server.arg("apiKey"))
   {
     // The json response
-    StaticJsonDocument<200> response;
+    JsonDocument response;
     response["status"] = "failed";
     response["message"] = "invalid api key";
     String jsonString;
@@ -1551,7 +1551,7 @@ void handleAPIset()
   if (!client.enabled)
   {
     // The json response
-    StaticJsonDocument<200> response;
+    JsonDocument response;
     response["status"] = "failed";
     response["message"] = "client disabled";
     String jsonString;
@@ -1572,7 +1572,7 @@ void handleAPIset()
   displayText(row1.c_str(), row2.c_str());
 
   // The json response
-  StaticJsonDocument<200> response;
+  JsonDocument response;
   response["status"] = "success";
   response["message"] = "";
   String jsonString;
@@ -1587,12 +1587,12 @@ void handleAPIclear()
   if (!server.hasArg("id")) return;
   if (!server.hasArg("apiKey")) return;
 
-  APIclient client = APIclientList::clients_getByID(server.arg("id").toInt());
+  const APIclient client = APIclientList::clients_getByID(server.arg("id").toInt());
 
   if (client.id == -1)
   {
     // The json response
-    StaticJsonDocument<200> response;
+    JsonDocument response;
     response["status"] = "failed";
     response["message"] = "invalid client id";
     String jsonString;
@@ -1605,7 +1605,7 @@ void handleAPIclear()
   if ((String)client.apiKey != server.arg("apiKey"))
   {
     // The json response
-    StaticJsonDocument<200> response;
+    JsonDocument response;
     response["status"] = "failed";
     response["message"] = "invalid api key";
     String jsonString;
@@ -1618,7 +1618,7 @@ void handleAPIclear()
   if (!client.enabled)
   {
     // The json response
-    StaticJsonDocument<200> response;
+    JsonDocument response;
     response["status"] = "failed";
     response["message"] = "client disabled";
     String jsonString;
