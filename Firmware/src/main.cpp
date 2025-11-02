@@ -1283,21 +1283,27 @@ unsigned long displayTempTextUntil = 0;
 #pragma region Method Declaration
 void displayText(String line1, String line2);
 void displayTextTemp(const String& line1, const String& line2, const int time);
+void handleDisplay();
 void clearDisplay(int row);
+
+void handleStopButton();
+
 void fetchPrefs();
 void putPrefs();
-void handleStopButton();
-void handleDisplay();
-void showLoadingScreen(int statusCode, const String& message);
+
 void handleRoot();
-void handlePreferences();
-void handleClear();
-void handleApiClear();
-void handleApiSet();
-void handleApiGet();
-void handlePrefsApply();
 void handleSet();
-void webServerRoutes();
+void handleClear();
+void handleAPIget();
+void handleAPIset();
+void handleAPIclear();
+void handlePrefs();
+void handlePrefsAPI();
+void handlePrefsAPIadd();
+void handlePrefsAPIrename();
+void handlePrefsApply();
+void setupWebServerRoutes();
+void showLoadingScreen(int statusCode, const String& message);
 #pragma endregion
 
 #pragma region Hilfsfunktionen
@@ -1420,40 +1426,25 @@ void handleDisplay() {
 #pragma region WebServer
 //=======WEBSERVER=======//
 
-// Show the loading screen with a custom message
-void showLoadingScreen(int statusCode, const String& message) {
-  String html = String(html_loader);
-  html.replace("%MESSAGE%", message);
-  server.send(statusCode, "text/html", html);
-}
-
 // The logic for the root path ("/")
 void handleRoot() {
   server.send(200, "text/html", html_main);
 }
 
-// The logic for the preferences path ("/preferences")
-void handlePreferences() {
+// The logic for the set path ("/set?row1=[...]&row2=[...]")
+void handleSet() {
+  String row1 = "";
+  String row2 = "";
 
-  String html = String(html_prefs);
+  // Fetch the parameters from the request
+  if (server.hasArg("Row1")) row1 = server.arg("Row1");
+  if (server.hasArg("Row2")) row2 = server.arg("Row2");
 
-  String apiList;
-  for (int i = 0; i < APIclientList::clientCount_get(); i++)
-  {
-    APIclient client = APIclientList::clients_get()[i];
-    
-    apiList += String("<div class='api-client-card' data-id='") + client.id + "'>";
-    apiList += "<div class='api-client-name'>" + (String) client.name + "</div>";
-    apiList += "<div class='api-client-actions'>";
-    apiList += "<label class='toggle-switch'><input type='checkbox'";
-    if (client.enabled) apiList += " checked";
-    apiList += "><span class='slider'></span></label>";
-    apiList += "<button class='info-btn'>i</button>";
-    apiList += "</div></div>";
-  }
-  html.replace("%API_LIST%", apiList);
+  // Refresh the LCD
+  displayText(row1.c_str(), row2.c_str());
 
-  server.send(200, "text/html", html);
+  server.sendHeader("Location", "/"); // Redirect to root
+  showLoadingScreen(303, "Anzeige wird aktualisiert");
 }
 
 // The logic for the clear path ("/clear[?row=-1|1|2]")
@@ -1467,13 +1458,12 @@ void handleClear()
   showLoadingScreen(303, "Lösche Anzeige"); 
 }
 
-// The logic for the clear path ("/api/clear[?row=-1|1|2]")
-void handleApiClear()
-{
+// The logic for the api-get path ("api/get")
+void handleAPIget() {
   if (!server.hasArg("id")) return;
   if (!server.hasArg("apiKey")) return;
 
-  const APIclient client = APIclientList::clients_getByID(server.arg("id").toInt());
+  APIclient client = APIclientList::clients_getByID(server.arg("id").toInt());
 
   if (client.id == -1)
   {
@@ -1514,14 +1504,10 @@ void handleApiClear()
     return;
   }
 
-  int row = -1;
-  if (server.hasArg("row")) row = server.arg("row").toInt();
-  clearDisplay(row);
 
-  // The json response
-  StaticJsonDocument<200> response;
-  response["status"] = "success";
-  response["message"] = "";
+  JsonDocument response;
+  response["row1"] = line1Text;
+  response["row2"] = line2Text;
   String jsonString;
   serializeJson(response, jsonString);
 
@@ -1529,7 +1515,7 @@ void handleApiClear()
 }
 
 // The logic for the api-set-request ("/api/set?row1=[...]&row2=[...]")
-void handleAPISet()
+void handleAPIset()
 {
   if (!server.hasArg("id")) return;
   if (!server.hasArg("apiKey")) return;
@@ -1595,8 +1581,9 @@ void handleAPISet()
   server.send(200, "application/json", jsonString);
 }
 
-// The logic for the api-get path ("api/get")
-void handleAPIget() {
+// The logic for the clear path ("/api/clear[?row=-1|1|2]")
+void handleAPIclear()
+{
   if (!server.hasArg("id")) return;
   if (!server.hasArg("apiKey")) return;
 
@@ -1641,14 +1628,42 @@ void handleAPIget() {
     return;
   }
 
+  int row = -1;
+  if (server.hasArg("row")) row = server.arg("row").toInt();
+  clearDisplay(row);
 
-  StaticJsonDocument<200> response;
-  response["row1"] = line1Text;
-  response["row2"] = line2Text;
+  // The json response
+  JsonDocument response;
+  response["status"] = "success";
+  response["message"] = "";
   String jsonString;
   serializeJson(response, jsonString);
 
   server.send(200, "application/json", jsonString);
+}
+
+// The logic for the preferences path ("/preferences")
+void handlePrefs() {
+
+  String html = String(html_prefs);
+
+  String apiList;
+  for (int i = 0; i < APIclientList::clientCount_get(); i++)
+  {
+    APIclient client = APIclientList::clients_get()[i];
+    
+    apiList += String("<div class='api-client-card' data-id='") + client.id + "'>";
+    apiList += "<div class='api-client-name'>" + (String) client.name + "</div>";
+    apiList += "<div class='api-client-actions'>";
+    apiList += "<label class='toggle-switch'><input type='checkbox'";
+    if (client.enabled) apiList += " checked";
+    apiList += "><span class='slider'></span></label>";
+    apiList += "<button class='info-btn'>i</button>";
+    apiList += "</div></div>";
+  }
+  html.replace("%API_LIST%", apiList);
+
+  server.send(200, "text/html", html);
 }
 
 void handlePrefsAPI() {
@@ -1673,20 +1688,19 @@ void handlePrefsAPIadd()
   showLoadingScreen(303, "Füge Client Hinzu"); 
 }
 
-// The logic for the set path ("/set?row1=[...]&row2=[...]")
-void handleSet() {
-  String row1 = "";
-  String row2 = "";
+void handlePrefsAPIrename() {
+  if (server.hasArg("id") && server.hasArg("name") )
+  {
+    int id = (int) server.arg("id").c_str();
+    String name = server.arg("name");
 
-  // Fetch the parameters from the request
-  if (server.hasArg("Row1")) row1 = server.arg("Row1");
-  if (server.hasArg("Row2")) row2 = server.arg("Row2");
+    APIclient client = APIclientList::clients_getByID(id);
 
-  // Refresh the LCD
-  displayText(row1.c_str(), row2.c_str());
+    strncpy(client.name, name.c_str(), sizeof(client.name)-1);
 
-  server.sendHeader("Location", "/"); // Redirect to root
-  showLoadingScreen(303, "Anzeige wird aktualisiert");
+    APIclientList::clients_removeByID(id);
+    APIclientList::clients_add(client);
+  }
 }
 
 // The logic for the preferences-apply-path ("preferences/apply?ssid=[...]&pwd=[...]")
@@ -1705,21 +1719,32 @@ void handlePrefsApply() {
 
 void setupWebServerRoutes() {
   // Webserver Routes
-  server.on("/", HTTP_GET, handleRoot);
-
-  server.on("/preferences", HTTP_GET, handlePreferences);
-  server.on("/preferences/api", HTTP_POST, handlePrefsAPI);
-  server.on("/preferences/api", HTTP_GET, handlePrefsAPI);
-  server.on("/preferences/apply", HTTP_POST, handlePrefsApply);
-  server.on("/preferences/api/add", HTTP_POST, handlePrefsAPIadd);
-  server.on("/set", HTTP_GET, handleSet);
-  server.on("/api/set", HTTP_GET, handleAPISet);
-  server.on("/api/get", HTTP_GET, handleAPIget);
-  server.on("/clear", HTTP_GET, handleClear);
-  server.on("/api/clear", HTTP_GET, handleApiClear);
+  server.on("/",                        HTTP_GET,   handleRoot);
+  server.on("/set",                     HTTP_GET,   handleSet);
+  server.on("/clear",                   HTTP_GET,   handleClear);
+  
+  server.on("/api/get",                 HTTP_GET,   handleAPIget);
+  server.on("/api/set",                 HTTP_GET,   handleAPIset);
+  server.on("/api/clear",               HTTP_GET,   handleAPIclear);
+  
+  server.on("/preferences",             HTTP_GET,   handlePrefs);
+  server.on("/preferences/api",         HTTP_POST,  handlePrefsAPI);
+  server.on("/preferences/api",         HTTP_GET,   handlePrefsAPI);
+  server.on("/preferences/api/add",     HTTP_POST,  handlePrefsAPIadd);
+  server.on("/preferences/api/rename",  HTTP_POST,  handlePrefsAPIrename);
+  server.on("/preferences/apply",       HTTP_POST,  handlePrefsApply);
   
   server.begin();
 }
+
+
+// Show the loading screen with a custom message
+void showLoadingScreen(int statusCode, const String& message) {
+  String html = String(html_loader);
+  html.replace("%MESSAGE%", message);
+  server.send(statusCode, "text/html", html);
+}
+
 #pragma endregion
 
 #pragma region Logic
