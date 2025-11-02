@@ -17,6 +17,7 @@ using namespace std;
 #pragma endregion
 
 #pragma region HTMLs
+
 #pragma region Main
 const char* html_main = R"rawliteral(
 <!doctype html>
@@ -324,6 +325,131 @@ const char* html_main = R"rawliteral(
 )rawliteral";
 #pragma endregion
 
+#pragma region Loader
+const char* html_loader = R"rawliteral(
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ladebildschirm — Bushaltestelle</title>
+  <style>
+    :root{
+      --sky:#87CEEB;
+      --road:#555;
+      --bus:#FFD600;
+      --highlight:#4CAF50;
+    }
+
+    html,body{height:100%;margin:0;background:var(--sky);font-family:system-ui,Segoe UI,Roboto,Arial;overflow:hidden;}
+
+    .loader-screen{position:fixed;inset:0;background:var(--sky);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;overflow:hidden;}
+
+    .clouds{position:absolute;top:10%;left:0;width:400%;display:flex;gap:60px;animation:moveSky 80s linear infinite;z-index:2;}
+    .cloud{width:120px;height:70px;background:#fff;border-radius:50%;position:relative;filter:drop-shadow(2px 2px 3px rgba(0,0,0,0.2));}
+    .cloud::before,.cloud::after{content:'';position:absolute;background:#fff;border-radius:50%;}
+    .cloud::before{width:70px;height:70px;top:-25px;left:20px;}
+    .cloud::after{width:90px;height:90px;top:-35px;left:50px;}
+
+    .trees{position:absolute;bottom:120px;left:0;width:400%;display:flex;gap:50px;animation:moveSky 30s linear infinite;z-index:2;}
+    .tree svg{height:150px;}
+
+    .road{position:absolute;bottom:0;left:0;width:200%;height:120px;background:var(--road);z-index:1;}
+    .lane{position:absolute;bottom:60px;left:0;width:200%;height:6px;background:repeating-linear-gradient(to right, #fff 0 50px, transparent 50px 100px);animation:drive 8s linear infinite;border-radius:3px;}
+
+    .bus{position:absolute;bottom:110px;left:50%;transform:translateX(-50%);width:180px;height:80px;background:var(--bus);border-radius:15px 15px 8px 8px;box-shadow:0 6px 12px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:space-between;padding:0 12px;animation:busFloat 2s ease-in-out infinite alternate;z-index:3;}
+    .window{width:38px;height:30px;background:#4CAF50;border-radius:5px;margin-top:10px;box-shadow:inset 0 2px 3px rgba(0,0,0,0.2);}
+    .door{width:28px;height:50px;background:#4CAF50;border-radius:4px;margin-right:6px;box-shadow:inset 0 2px 3px rgba(0,0,0,0.2);}
+    .wheel{width:24px;height:24px;background:#111;border-radius:50%;position:absolute;bottom:-12px;box-shadow:0 2px 3px rgba(0,0,0,0.5);}
+    .wheel.left{left:30px;}
+    .wheel.right{right:30px;}
+
+    .dot-container{position:absolute;top:25%;width:100%;display:flex;justify-content:center;gap:6px;}
+    .dot{width:12px;height:12px;background:var(--highlight);border-radius:50%;animation:dotBlink 1.2s infinite ease-in-out;}
+    .dot:nth-child(2){animation-delay:0.2s;}
+    .dot:nth-child(3){animation-delay:0.4s;}
+
+    .message-box{
+      position:absolute;
+      bottom:240px;
+      background:rgba(255,255,255,0.8);
+      color:#111;
+      padding:12px 18px;
+      border-radius:10px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.3);
+      font-size:1.1rem;
+      text-align:center;
+      max-width:80%;
+    }
+
+    @keyframes drive{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+    @keyframes moveSky{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+    @keyframes dotBlink{0%,80%,100%{opacity:0.3;}40%{opacity:1;}}
+    @keyframes busFloat{0%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(-5px);}100%{transform:translateX(-50%) translateY(0);}}
+
+    @media (prefers-reduced-motion: reduce){.lane,.clouds,.trees,.dot,.bus{animation:none}}
+  </style>
+</head>
+<body>
+  <div class="loader-screen">
+    <div class="clouds">
+      <div class="cloud"></div><div class="cloud"></div><div class="cloud"></div>
+      <div class="cloud"></div><div class="cloud"></div><div class="cloud"></div>
+    </div>
+
+    <div class="trees">
+      <div class="tree">
+        <svg viewBox="0 0 64 128" xmlns="http://www.w3.org/2000/svg">
+          <rect x="28" y="80" width="8" height="48" fill="#8B4513"/>
+          <circle cx="32" cy="64" r="32" fill="green"/>
+        </svg>
+      </div>
+      <div class="tree">
+        <svg viewBox="0 0 64 128" xmlns="http://www.w3.org/2000/svg">
+          <rect x="28" y="80" width="8" height="48" fill="#8B4513"/>
+          <circle cx="32" cy="64" r="32" fill="green"/>
+        </svg>
+      </div>
+      <div class="tree">
+        <svg viewBox="0 0 64 128" xmlns="http://www.w3.org/2000/svg">
+          <rect x="28" y="80" width="8" height="48" fill="#8B4513"/>
+          <circle cx="32" cy="64" r="32" fill="green"/>
+        </svg>
+      </div>
+      <div class="tree">
+        <svg viewBox="0 0 64 128" xmlns="http://www.w3.org/2000/svg">
+          <rect x="28" y="80" width="8" height="48" fill="#8B4513"/>
+          <circle cx="32" cy="64" r="32" fill="green"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="road"><div class="lane"></div></div>
+
+    <div class="bus">
+      <div class="window"></div>
+      <div class="window"></div>
+      <div class="door"></div>
+      <div class="wheel left"></div>
+      <div class="wheel right"></div>
+    </div>
+
+    <div class="dot-container">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+
+    <div class="message-box">%MESSAGE%</div>
+  </div>
+
+  <script>
+    window.showBusLoader = ()=> document.querySelector('.loader-screen').style.display='flex';
+    window.hideBusLoader = ()=> document.querySelector('.loader-screen').style.display='none';
+  </script>
+</body>
+</html>
+)rawliteral";
+#pragma endregion
+
 #pragma region Preferences
 const char* html_prefs = R"rawliteral(
 <!doctype html>
@@ -559,7 +685,9 @@ const char* html_prefs = R"rawliteral(
   <main class="card" id="apiList">
     %API_LIST%
     <!-- Floating Add Button -->
-    <button class="add-btn" title="Neuen Client hinzufügen">+</button>
+    <form id="addClientForm" method="POST" action="/preferences/api/add">
+      <button class="add-btn" title="Neuen Client hinzufügen" type="submit">+</button>
+    </form>
   </main>
 
   <a href="https://github.com/EmilZander/Bushaltestelle-ESP8266">
@@ -736,8 +864,11 @@ const char* html_loader = R"rawliteral(
 </body>
 </html>
 )rawliteral";
+
 #pragma endregion
+
 #pragma endregion
+
 
 #pragma region Variables
 
@@ -965,7 +1096,6 @@ void handleApiClear();
 void handleApiSet();
 void handleApiGet();
 void handlePrefsApply();
-void handlePrefsApi();
 void handleSet();
 void webServerRoutes();
 #pragma endregion
@@ -1322,14 +1452,25 @@ void handleAPIget() {
 }
 
 void handlePrefsAPI() {
-  if (server.hasArg("apiEnabled")) apiActivated = server.arg("apiEnabled") == "on";
-  else apiActivated = false;
+  int id = -1;
+  if (server.hasArg("id")) id = (int) server.arg("id").c_str();
 
-  // Persist the API setting
-  putPrefs();
+  String html = String(html_prefs_api);
 
-  server.sendHeader("Location", "/"); // Redirect to root
-  showLoadingScreen(303, "Einstellungen werden Eingebaut"); // 303 See Other
+  html.replace("%ID%", (String)id);
+  html.replace("%Name%", APIclientList::clients_getByID(id).name);
+  html.replace("%Key%", APIclientList::clients_getByID(id).apiKey);
+
+  server.send(200, "text/html", html);
+}
+
+void handlePrefsAPIadd()
+{
+  APIclient newClient = APIclientList::getNextClient();
+  APIclientList::clients_add(newClient);
+
+  server.sendHeader("Location", "/preferences/api?id="+String(newClient.id));
+  showLoadingScreen(303, "Füge Client Hinzu"); 
 }
 
 // The logic for the set path ("/set?row1=[...]&row2=[...]")
@@ -1364,10 +1505,13 @@ void handlePrefsApply() {
 
 void setupWebServerRoutes() {
   // Webserver Routes
-  server.on("/preferences/api", HTTP_POST, handlePrefsAPI);
   server.on("/", HTTP_GET, handleRoot);
+
   server.on("/preferences", HTTP_GET, handlePreferences);
+  server.on("/preferences/api", HTTP_POST, handlePrefsAPI);
+  server.on("/preferences/api", HTTP_GET, handlePrefsAPI);
   server.on("/preferences/apply", HTTP_POST, handlePrefsApply);
+  server.on("/preferences/api/add", HTTP_POST, handlePrefsAPIadd);
   server.on("/set", HTTP_GET, handleSet);
   server.on("/api/set", HTTP_GET, handleAPISet);
   server.on("/api/get", HTTP_GET, handleAPIget);
@@ -1383,6 +1527,8 @@ void setup() {
   Serial.begin(9600);
   pinMode(STOP_BUTTON, INPUT_PULLUP);
   pinMode(LED, OUTPUT);
+  
+  APIclientList::clients_clear();
   
   lcd.init();
   lcd.backlight();

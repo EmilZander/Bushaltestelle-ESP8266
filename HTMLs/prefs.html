@@ -231,7 +231,9 @@
   <main class="card" id="apiList">
     %API_LIST%
     <!-- Floating Add Button -->
-    <button class="add-btn" title="Neuen Client hinzufügen">+</button>
+    <form id="addClientForm" method="POST" action="/preferences/api/add">
+      <button class="add-btn" title="Neuen Client hinzufügen" type="submit">+</button>
+    </form>
   </main>
 
   <a href="https://github.com/EmilZander/Bushaltestelle-ESP8266">

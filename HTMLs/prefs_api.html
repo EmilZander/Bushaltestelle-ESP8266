@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>API-Client Detail — Bushaltestelle</title>
+  <!-- Material Icons Web-Font -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#F0F0F0;
+      --card:#FFFFFF;
+      --accent:#FFEB3B;
+      --muted:#4CAF50;
+      --danger:#FF5252;
+    }
+
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      background:var(--bg);
+      color:#333;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:20px;
+      gap:20px;
+      min-height:100vh;
+    }
+
+    h1,h2{
+      font-size:clamp(18px,3vw,24px);
+      color:var(--muted);
+      margin:0;
+      text-align:left;
+    }
+
+    .name-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      width:100%;
+      max-width:540px;
+    }
+
+    .card{
+      width:100%;
+      max-width:540px;
+      background:var(--card);
+      border-radius:14px;
+      padding:20px;
+      box-shadow:0 4px 20px rgba(0,0,0,0.2);
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      position:relative;
+    }
+
+    label{
+      font-size:13px;
+      color:var(--muted);
+      display:block;
+      margin-bottom:4px;
+    }
+
+    .value-field{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background:#F9F9F9;
+      border:1px solid #ccc;
+      border-radius:8px;
+      padding:10px 14px;
+      font-family:monospace;
+      font-size:16px;
+    }
+
+    button{
+      cursor:pointer;
+      border:none;
+      border-radius:8px;
+      padding:6px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-width:auto;
+      background:#FFEB3B;
+      color:var(--muted);
+      font-family: 'Material Icons';
+      font-size:20px;
+    }
+
+    .controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:center;
+      margin-top:10px;
+    }
+
+    .btn-delete{
+      background:var(--danger);
+      color:#fff;
+      font-family:initial;
+      font-size:16px;
+      padding:12px 18px;
+      border-radius:10px;
+    }
+
+    .btn-back{
+      background:#fff;
+      border:2px solid var(--muted);
+      color:var(--muted);
+      font-family:initial;
+      font-size:16px;
+      padding:12px 18px;
+      border-radius:10px;
+    }
+
+    /* Modal */
+    .modal {
+      position:fixed;
+      top:0; left:0;
+      width:100%; height:100%;
+      background:rgba(0,0,0,0.4);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      visibility:hidden;
+      opacity:0;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      z-index:1000;
+    }
+
+    .modal.active{
+      visibility:visible;
+      opacity:1;
+    }
+
+    .modal-content{
+      background:#fff;
+      border-radius:12px;
+      padding:20px;
+      max-width:400px;
+      width:90%;
+      text-align:center;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      box-shadow:0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .modal-content p{
+      margin:0;
+      font-size:16px;
+      color:#333;
+    }
+
+    .modal-content .modal-actions{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Name + Rename -->
+  <div class="name-row">
+    <h1 id="clientName">%Name%</h1>
+    <button title="Umbenennen" onclick="renameClient()">edit</button>
+  </div>
+
+  <main class="card">
+    <div>
+      <label>ID</label>
+      <div class="value-field">
+        <span id="clientId">%ID%</span>
+        <button title="Kopieren" onclick="copyToClipboard('clientId')">content_copy</button>
+      </div>
+    </div>
+
+    <div>
+      <label>API-Key</label>
+      <div class="value-field">
+        <span id="clientKey">%Key%</span>
+        <button title="Neu Zuweisen" onclick="confirmAction('reassign')">autorenew</button>
+        <button title="Kopieren" onclick="copyToClipboard('clientKey')">content_copy</button>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn-delete" onclick="confirmAction('delete')">Löschen</button>
+      <button class="btn-back" onclick="window.location.href='/preferences'">Zurück</button>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal" id="confirmModal">
+    <div class="modal-content">
+      <p id="modalText">Bist du dir sicher?</p>
+      <div class="modal-actions">
+        <button onclick="proceedAction()">Ja</button>
+        <button onclick="closeModal()">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function copyToClipboard(id){
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text).then(()=>alert('Kopiert!'));
+    }
+
+    let actionType = '';
+    function confirmAction(type){
+      actionType = type;
+      const modal = document.getElementById('confirmModal');
+      if(type==='delete') document.getElementById('modalText').textContent = 'Bist du dir sicher, dass du löschen willst?';
+      if(type==='reassign') document.getElementById('modalText').textContent = 'Bist du dir sicher, dass du den API-Key neu zuweisen willst?';
+      modal.classList.add('active');
+    }
+
+    function closeModal(){
+      document.getElementById('confirmModal').classList.remove('active');
+      actionType = '';
+    }
+
+    function proceedAction(){
+      const id = encodeURIComponent(document.getElementById('clientId').textContent);
+      if(actionType==='delete') window.location.href = `/preferences/api/delete?id=${id}`;
+      if(actionType==='reassign') window.location.href = `/preferences/api/reassignCode?id=${id}`;
+    }
+
+    function renameClient(){
+      const name = prompt('Neuer Name für den Client:', document.getElementById('clientName').textContent);
+      if(name) window.location.href = `/preferences/api/rename?id=${encodeURIComponent(document.getElementById('clientId').textContent)}&name=${encodeURIComponent(name)}`;
+    }
+  </script>
+</body>
+</html>
