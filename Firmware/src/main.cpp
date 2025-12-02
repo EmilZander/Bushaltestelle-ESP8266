@@ -1025,28 +1025,70 @@ class APIclientList
 {
   public:
     static const int MAX_CLIENTS = 8;
+    static const int GENERAL_CLIENT_ID = 0; // feste ID
+    static constexpr const char* GENERAL_CLIENT_NAME = "Allgemeine Schnittstelle";
+
   private:
     static APIclient clients[MAX_CLIENTS];
     static int clientCount;
+
+    static void ensureGeneralClient()
+    {
+      // Prüfen ob der allgemeine Client existiert
+      bool found = false;
+      for (int i = 0; i < clientCount; i++)
+      {
+        if (clients[i].id == GENERAL_CLIENT_ID)
+        {
+          // Name sicherstellen
+          strncpy(clients[i].name, GENERAL_CLIENT_NAME, sizeof(clients[i].name) - 1);
+          clients[i].name[sizeof(clients[i].name) - 1] = '\0';
+          found = true;
+          break;
+        }
+      }
+
+      // Falls nicht vorhanden, neu anlegen
+      if (!found)
+      {
+        APIclient general;
+        general.id = GENERAL_CLIENT_ID;
+        strncpy(general.name, GENERAL_CLIENT_NAME, sizeof(general.name) - 1);
+        general.name[sizeof(general.name) - 1] = '\0';
+        strncpy(general.apiKey, generateApiKey().c_str(), sizeof(general.apiKey) - 1);
+        general.apiKey[sizeof(general.apiKey) - 1] = '\0';
+
+        // Falls Platz ist, einfügen
+        if (clientCount < MAX_CLIENTS)
+        {
+          clients[clientCount++] = general;
+        }
+        else
+        {
+          // Wenn Liste voll ist, ersetzen wir den letzten
+          clients[MAX_CLIENTS - 1] = general;
+        }
+      }
+    }
   
   public:
     static const APIclient* clients_get()
     {
-      return APIclientList::clients;
+      return clients;
     }
   
     static int clientCount_get()
-  {
-    for (int i = 0; i < MAX_CLIENTS; i++)
     {
-      if (clients[i].id == -1)
+      for (int i = 0; i < MAX_CLIENTS; i++)
       {
-        APIclientList::clientCount= i;
-        break;
+        if (clients[i].id == -1)
+        {
+          clientCount= i;
+          break;
+        }
       }
-    }
     
-      return APIclientList::clientCount;
+      return clientCount;
     }    
     
     static APIclient clients_getByID(const int id)
@@ -1081,6 +1123,8 @@ class APIclientList
       APIclientList::clients[APIclientList::clientCount] = client;
       APIclientList::clientCount++;
 
+      saveToEEPROM();
+
       return true;
     }
     
@@ -1095,26 +1139,31 @@ class APIclientList
     
     static void clients_clear()
     {
-      APIclientList::clientCount = 0;
+      clientCount = 0;
       memset(clients, 0, sizeof(clients));
+      ensureGeneralClient();
+
+      saveToEEPROM();
     }
     
     static void clients_removeByID(int id)
     {
-      for (int i = 0; i < APIclientList::clientCount; i++)
+      if (id == GENERAL_CLIENT_ID) return; // Ignorieren!
+
+      for (int i = 0; i < clientCount; i++)
       {
         if (clients[i].id == id)
         {
-          // Shift remaining APIclientList::clients down
-          for (int j = i; j < APIclientList::clientCount - 1; j++)
+          for (int j = i; j < clientCount - 1; j++)
           {
-            APIclientList::clients[j] = APIclientList::clients[j + 1];
+            clients[j] = clients[j + 1];
           }
-          APIclientList::clientCount--;
+          clientCount--;
           break;
         }
       }
-      
+
+      saveToEEPROM();
     }
     
     static int getNextID()
@@ -1134,15 +1183,21 @@ class APIclientList
     
     static void clients_setByID(int id, const char* name, const char* apiKey)
     {
-      for (int i = 0; i < APIclientList::clientCount; i++)
+      for (int i = 0; i < clientCount; i++)
       {
         if (clients[i].id == id)
         {
-          strncpy(clients[i].name, name, sizeof(clients[i].name)-1);
-          strncpy(clients[i].apiKey, apiKey, sizeof(clients[i].apiKey)-1);
+          if (id != GENERAL_CLIENT_ID)
+          {
+            strncpy(clients[i].name, name, sizeof(clients[i].name) - 1);
+            clients[i].name[sizeof(clients[i].name) - 1] = '\0';
+          }
+          strncpy(clients[i].apiKey, apiKey, sizeof(clients[i].apiKey) - 1);
+          clients[i].apiKey[sizeof(clients[i].apiKey) - 1] = '\0';
           break;
         }
       }
+      saveToEEPROM();
     }
     
     static APIclient clients_getByName(char* name)
@@ -1171,7 +1226,7 @@ class APIclientList
     }
     
     // Speichert die API-Clients im EEPROM
-    bool saveToEEPROM() {
+    static bool saveToEEPROM() {
       struct APIClientHeader {
         uint16_t magic;
         uint8_t count;
@@ -1198,34 +1253,35 @@ class APIclientList
     }
     
     // Lädt die API-Clients aus dem EEPROM
-    bool fetchFromEEPROM() {
-      struct APIClientHeader {
+    static bool fetchFromEEPROM()
+    {
+      struct APIClientHeader
+      {
         uint16_t magic;
         uint8_t count;
       } header;
-      
+
       EEPROM.begin(EEPROM_SIZE_BYTES);
-      
-      // Header lesen
       EEPROM.get(EEPROM_API_ADDR, header);
-      
-      // Prüfen ob valide Daten
-      if (header.magic != API_MAGIC || header.count > MAX_CLIENTS) {
-        // Keine oder ungültige Daten -> Liste leeren
+
+      if (header.magic != API_MAGIC || header.count > MAX_CLIENTS)
+      {
         clients_clear();
         EEPROM.end();
+        ensureGeneralClient();
         return false;
       }
-      
-      // Clients lesen
+
       clientCount = header.count;
       int offset = EEPROM_API_ADDR + sizeof(header);
-      for (int i = 0; i < clientCount; i++) {
-        EEPROM.get(offset, APIclientList::clients[i]);
+      for (int i = 0; i < clientCount; i++)
+      {
+        EEPROM.get(offset, clients[i]);
         offset += sizeof(APIclient);
       }
-      
+
       EEPROM.end();
+      ensureGeneralClient(); // <--- hier eingefügt
       return true;
     }
     
@@ -1254,6 +1310,11 @@ class APIclientList
       client.name[sizeof(client.name)-1] = '\0'; // Ensure null termination
       
       return client;
+    }
+
+    static void init()
+    {
+      fetchFromEEPROM();
     }
 };
 
@@ -1651,7 +1712,8 @@ void handlePrefs() {
   for (int i = 0; i < APIclientList::clientCount_get(); i++)
   {
     APIclient client = APIclientList::clients_get()[i];
-    
+    Serial.println("ID: "+(String)client.id);
+
     apiList += String("<div class='api-client-card' data-id='") + client.id + "'>";
     apiList += "<div class='api-client-name'>" + (String) client.name + "</div>";
     apiList += "<div class='api-client-actions'>";
@@ -1668,9 +1730,12 @@ void handlePrefs() {
 
 void handlePrefsAPI() {
   int id = -1;
-  if (server.hasArg("id")) id = (int) server.arg("id").c_str();
+  if (server.hasArg("id")) id = server.arg("id").toInt();
 
   String html = String(html_prefs_api);
+
+  APIclient client = APIclientList::clients_getByID(id);
+  Serial.println("ID: "+(String)id+"; Name: "+client.name+"; Key: "+client.apiKey);
 
   html.replace("%ID%", (String)id);
   html.replace("%Name%", APIclientList::clients_getByID(id).name);
@@ -1726,8 +1791,9 @@ void setupWebServerRoutes() {
   server.on("/api/get",                 HTTP_GET,   handleAPIget);
   server.on("/api/set",                 HTTP_GET,   handleAPIset);
   server.on("/api/clear",               HTTP_GET,   handleAPIclear);
-  
+  server.on("/preferences",             HTTP_POST,  handlePrefs);
   server.on("/preferences",             HTTP_GET,   handlePrefs);
+
   server.on("/preferences/api",         HTTP_POST,  handlePrefsAPI);
   server.on("/preferences/api",         HTTP_GET,   handlePrefsAPI);
   server.on("/preferences/api/add",     HTTP_POST,  handlePrefsAPIadd);
@@ -1753,7 +1819,7 @@ void setup() {
   pinMode(STOP_BUTTON, INPUT_PULLUP);
   pinMode(LED, OUTPUT);
   
-  APIclientList::clients_clear();
+  APIclientList::init();
 
   lcd.init();
   lcd.backlight();
